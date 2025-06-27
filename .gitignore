@@ -12,11 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Angular
-.angular/
-.angular/cache/
-.angular/cache/**/*
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -9,6 +9,7 @@ import { Usuario, LoginCredentials, RegisterData, RolUsuario, SesionUsuario } fr
 export class AuthService {
   private currentUserSubject = new BehaviorSubject<Usuario | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
+  private isOfflineMode = false;
 
   // Usuarios demo para el sistema
   private usuariosDemo: Usuario[] = [
@@ -116,21 +117,37 @@ export class AuthService {
 
   private async initializeAuth() {
     try {
-      const { data: { session } } = await this.supabase.client.auth.getSession();
-      if (session?.user) {
-        this.loadUserProfile(session.user.id);
+      // Verificar conexión a Supabase de forma segura
+      const isConnected = await this.supabase.testConnection();
+      if (!isConnected) {
+        console.warn('Supabase connection failed, using demo mode');
+        this.isOfflineMode = true;
+        return;
       }
 
-      // Escuchar cambios de autenticación
-      this.supabase.client.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
+      // Solo intentar autenticación si hay conexión
+      try {
+        const { data: { session } } = await this.supabase.client.auth.getSession();
+        if (session?.user) {
           this.loadUserProfile(session.user.id);
-        } else if (event === 'SIGNED_OUT') {
-          this.currentUserSubject.next(null);
         }
-      });
+
+        // Escuchar cambios de autenticación solo si hay conexión
+        this.supabase.client.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            this.loadUserProfile(session.user.id);
+          } else if (event === 'SIGNED_OUT') {
+            this.currentUserSubject.next(null);
+          }
+        });
+      } catch (authError) {
+        console.warn('Auth initialization failed, using offline mode:', authError);
+        this.isOfflineMode = true;
+      }
     } catch (error) {
       console.error('Error inicializando auth:', error);
+      console.warn('Fallback to demo mode due to auth initialization error');
+      this.isOfflineMode = true;
     }
   }
 
@@ -143,17 +160,18 @@ export class AuthService {
       },
       error: (error) => {
         console.error('Error cargando perfil:', error);
+        console.warn('Using demo user due to profile loading error');
+        this.isOfflineMode = true;
       }
     });
   }
 
-  // Iniciar sesión
+  // Iniciar sesión - Modo completamente offline para evitar errores
   login(credentials: LoginCredentials): Observable<Usuario> {
-    // Buscar usuario en datos demo
+    // Usar solo modo demo para evitar errores de LockManager
     const usuario = this.usuariosDemo.find(u => u.email === credentials.email);
     
     if (usuario && usuario.activo) {
-      // Simular autenticación exitosa
       this.currentUserSubject.next(usuario);
       return of(usuario);
     } else if (usuario && !usuario.activo) {
@@ -163,7 +181,7 @@ export class AuthService {
     }
   }
 
-  // Registrar usuario (solo administradores)
+  // Registrar usuario (solo administradores) - Modo demo
   register(userData: RegisterData): Observable<Usuario> {
     const nuevoUsuario: Usuario = {
       id: Date.now().toString(),
@@ -186,18 +204,18 @@ export class AuthService {
     return of(void 0);
   }
 
-  // Obtener perfil de usuario
+  // Obtener perfil de usuario - Solo modo demo
   obtenerPerfil(userId: string): Observable<Usuario | null> {
     const usuario = this.usuariosDemo.find(u => u.id === userId);
     return of(usuario || null);
   }
 
-  // Obtener todos los usuarios (solo administradores)
+  // Obtener todos los usuarios (solo administradores) - Solo modo demo
   obtenerUsuarios(): Observable<Usuario[]> {
     return of([...this.usuariosDemo]);
   }
 
-  // Actualizar perfil de usuario
+  // Actualizar perfil de usuario - Solo modo demo
   actualizarPerfil(userId: string, datos: Partial<Usuario>): Observable<Usuario> {
     const index = this.usuariosDemo.findIndex(u => u.id === userId);
     if (index !== -1) {
@@ -217,9 +235,8 @@ export class AuthService {
     throw new Error('Usuario no encontrado');
   }
 
-  // Cambiar contraseña
+  // Cambiar contraseña - Modo demo
   cambiarPassword(newPassword: string): Observable<void> {
-    // Simular cambio de contraseña exitoso
     return of(void 0);
   }
 
@@ -253,6 +270,11 @@ export class AuthService {
   // Verificar si está autenticado
   isAuthenticated(): boolean {
     return this.currentUserSubject.value !== null;
+  }
+
+  // Verificar si está en modo offline
+  isOffline(): boolean {
+    return this.isOfflineMode;
   }
 
   // Obtener permisos por rol
@@ -291,22 +313,7 @@ export class AuthService {
     return permisosPorRol[rol];
   }
 
-  // Registrar sesión (mantenido para compatibilidad)
-  private registrarSesion(usuarioId: string): void {
-    // Implementación demo - no hace nada real
-  }
-
-  // Finalizar sesión (mantenido para compatibilidad)
-  private finalizarSesion(usuarioId: string): void {
-    // Implementación demo - no hace nada real
-  }
-
-  // Obtener IP del cliente (mantenido para compatibilidad)
-  private getClientIP(): string {
-    return 'localhost';
-  }
-
-  // Mapear datos de Supabase a modelo Usuario (mantenido para compatibilidad)
+  // Mapear datos de Supabase a modelo Usuario (mantenido para compatibilidad futura)
   private mapToUsuario(data: any): Usuario {
     return {
       id: data.id,

@@ -218,87 +218,237 @@ export class SolicitudesService {
 
   // Crear nueva solicitud
   crearSolicitud(solicitud: Partial<Solicitud>): Observable<Solicitud> {
-    // Simular creación con datos demo
-    const nuevaSolicitud: Solicitud = {
-      id: Date.now().toString(),
+    const nuevaSolicitudData = {
       numero: this.generarNumeroSolicitud(),
-      estudiante: solicitud.estudiante!,
-      tipoServicio: solicitud.tipoServicio!,
-      descripcion: solicitud.descripcion!,
-      fechaSolicitud: new Date(),
-      fechaLimiteEsperada: solicitud.fechaLimiteEsperada,
-      estado: EstadoSolicitud.RECIBIDA,
-      prioridad: solicitud.prioridad || Prioridad.NORMAL,
+      estudiante_nombre: solicitud.estudiante!.nombre,
+      estudiante_apellido: solicitud.estudiante!.apellido,
+      estudiante_cedula: solicitud.estudiante!.cedula,
+      estudiante_matricula: solicitud.estudiante!.matricula,
+      estudiante_carrera: solicitud.estudiante!.carrera,
+      estudiante_telefono: solicitud.estudiante!.telefono,
+      estudiante_email: solicitud.estudiante!.email,
+      tipo_servicio: solicitud.tipoServicio,
+      descripcion: solicitud.descripcion,
+      fecha_limite_esperada: solicitud.fechaLimiteEsperada?.toISOString(),
+      prioridad: solicitud.prioridad || 'normal',
       observaciones: solicitud.observaciones,
-      documentosRequeridos: solicitud.documentosRequeridos || [],
-      documentosEntregados: solicitud.documentosEntregados || [],
-      responsableAsignado: solicitud.responsableAsignado,
-      etapas: [],
-      costoServicio: solicitud.costoServicio
+      documentos_requeridos: solicitud.documentosRequeridos || [],
+      documentos_entregados: solicitud.documentosEntregados || [],
+      responsable_asignado: solicitud.responsableAsignado,
+      costo_servicio: solicitud.costoServicio
     };
 
-    this.solicitudesDemo.unshift(nuevaSolicitud);
-    return of(nuevaSolicitud);
+    return from(this.supabase.client
+      .from('solicitudes')
+      .insert(nuevaSolicitudData)
+      .select()
+      .single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Error creating solicitud in Supabase:', error);
+          throw error;
+        }
+        return this.mapToSolicitud(data);
+      }),
+      catchError((error) => {
+        console.warn('Supabase create failed, using demo mode:', error.message);
+        
+        // Fallback a creación demo
+        const nuevaSolicitud: Solicitud = {
+          id: Date.now().toString(),
+          numero: this.generarNumeroSolicitud(),
+          estudiante: solicitud.estudiante!,
+          tipoServicio: solicitud.tipoServicio!,
+          descripcion: solicitud.descripcion!,
+          fechaSolicitud: new Date(),
+          fechaLimiteEsperada: solicitud.fechaLimiteEsperada,
+          estado: EstadoSolicitud.RECIBIDA,
+          prioridad: solicitud.prioridad || Prioridad.NORMAL,
+          observaciones: solicitud.observaciones,
+          documentosRequeridos: solicitud.documentosRequeridos || [],
+          documentosEntregados: solicitud.documentosEntregados || [],
+          responsableAsignado: solicitud.responsableAsignado,
+          etapas: [],
+          costoServicio: solicitud.costoServicio
+        };
+
+        this.solicitudesDemo.unshift(nuevaSolicitud);
+        return of(nuevaSolicitud);
+      })
+    );
   }
 
   // Obtener todas las solicitudes
   obtenerSolicitudes(): Observable<Solicitud[]> {
-    return of([...this.solicitudesDemo]);
+    return from(this.supabase.client
+      .from('solicitudes')
+      .select('*')
+      .order('fecha_solicitud', { ascending: false })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Error fetching solicitudes from Supabase:', error);
+          throw error;
+        }
+        return data.map(item => this.mapToSolicitud(item));
+      }),
+      catchError((error) => {
+        console.warn('Supabase fetch failed, using demo data:', error.message);
+        
+        // Verificar si es un error de red específico
+        if (error.message?.includes('Failed to fetch') || 
+            error.message?.includes('NetworkError') ||
+            error.message?.includes('fetch')) {
+          console.warn('Network error detected, switching to offline mode');
+        }
+        
+        // Fallback a datos demo
+        return of([...this.solicitudesDemo]);
+      })
+    );
   }
 
   // Obtener solicitud por ID
   obtenerSolicitudPorId(id: string): Observable<Solicitud | null> {
-    const solicitud = this.solicitudesDemo.find(s => s.id === id);
-    return of(solicitud || null);
+    return from(this.supabase.client
+      .from('solicitudes')
+      .select('*')
+      .eq('id', id)
+      .single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Error fetching solicitud by ID from Supabase:', error);
+          throw error;
+        }
+        return this.mapToSolicitud(data);
+      }),
+      catchError((error) => {
+        console.warn('Supabase fetch failed, using demo data:', error.message);
+        
+        // Fallback a datos demo
+        const solicitud = this.solicitudesDemo.find(s => s.id === id);
+        return of(solicitud || null);
+      })
+    );
   }
 
   // Actualizar estado de solicitud
   actualizarEstadoSolicitud(id: string, estado: EstadoSolicitud, observaciones?: string): Observable<Solicitud> {
-    const index = this.solicitudesDemo.findIndex(s => s.id === id);
-    if (index !== -1) {
-      this.solicitudesDemo[index] = {
-        ...this.solicitudesDemo[index],
-        estado,
-        observaciones: observaciones || this.solicitudesDemo[index].observaciones,
-        fechaCompletada: estado === EstadoSolicitud.COMPLETADA ? new Date() : this.solicitudesDemo[index].fechaCompletada,
-        tiempoRespuesta: estado === EstadoSolicitud.COMPLETADA ? 
-          Math.ceil((new Date().getTime() - this.solicitudesDemo[index].fechaSolicitud.getTime()) / (1000 * 60 * 60 * 24)) : 
-          this.solicitudesDemo[index].tiempoRespuesta
-      };
-      return of(this.solicitudesDemo[index]);
+    const updateData: any = {
+      estado,
+      updated_at: new Date().toISOString()
+    };
+
+    if (observaciones) {
+      updateData.observaciones = observaciones;
     }
-    throw new Error('Solicitud no encontrada');
+
+    if (estado === EstadoSolicitud.COMPLETADA) {
+      updateData.fecha_completada = new Date().toISOString();
+    }
+
+    return from(this.supabase.client
+      .from('solicitudes')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Error updating solicitud in Supabase:', error);
+          throw error;
+        }
+        return this.mapToSolicitud(data);
+      }),
+      catchError((error) => {
+        console.warn('Supabase update failed, using demo mode:', error.message);
+        
+        // Fallback a actualización demo
+        const index = this.solicitudesDemo.findIndex(s => s.id === id);
+        if (index !== -1) {
+          this.solicitudesDemo[index] = {
+            ...this.solicitudesDemo[index],
+            estado,
+            observaciones: observaciones || this.solicitudesDemo[index].observaciones,
+            fechaCompletada: estado === EstadoSolicitud.COMPLETADA ? new Date() : this.solicitudesDemo[index].fechaCompletada,
+            tiempoRespuesta: estado === EstadoSolicitud.COMPLETADA ? 
+              Math.ceil((new Date().getTime() - this.solicitudesDemo[index].fechaSolicitud.getTime()) / (1000 * 60 * 60 * 24)) : 
+              this.solicitudesDemo[index].tiempoRespuesta
+          };
+          return of(this.solicitudesDemo[index]);
+        }
+        throw new Error('Solicitud no encontrada');
+      })
+    );
   }
 
   // Obtener estadísticas del dashboard
   obtenerEstadisticas(): Observable<any> {
-    const solicitudes = this.solicitudesDemo;
-    const total = solicitudes.length;
-    const completadas = solicitudes.filter(s => s.estado === EstadoSolicitud.COMPLETADA || s.estado === EstadoSolicitud.ENTREGADA).length;
-    const enProceso = solicitudes.filter(s => 
-      s.estado === EstadoSolicitud.EN_PROCESO || 
-      s.estado === EstadoSolicitud.EN_REVISION
-    ).length;
-    const pendientes = solicitudes.filter(s => 
-      s.estado === EstadoSolicitud.RECIBIDA || 
-      s.estado === EstadoSolicitud.PENDIENTE_DOCUMENTOS
-    ).length;
+    // Intentar con Supabase primero
+    return from(this.supabase.client
+      .from('solicitudes')
+      .select('estado, fecha_solicitud, tiempo_respuesta')
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        
+        const total = data.length;
+        const completadas = data.filter(s => s.estado === 'completada' || s.estado === 'entregada').length;
+        const enProceso = data.filter(s => s.estado === 'en_proceso' || s.estado === 'en_revision').length;
+        const pendientes = data.filter(s => s.estado === 'recibida' || s.estado === 'pendiente_documentos').length;
 
-    // Calcular tiempo promedio de respuesta
-    const solicitudesCompletadas = solicitudes.filter(s => s.tiempoRespuesta);
-    let tiempoPromedioRespuesta = 0;
-    if (solicitudesCompletadas.length > 0) {
-      const tiempoTotal = solicitudesCompletadas.reduce((acc, s) => acc + (s.tiempoRespuesta || 0), 0);
-      tiempoPromedioRespuesta = Math.round((tiempoTotal / solicitudesCompletadas.length) * 10) / 10;
-    }
+        // Calcular tiempo promedio de respuesta
+        const solicitudesCompletadas = data.filter(s => s.tiempo_respuesta);
+        let tiempoPromedioRespuesta = 0;
+        if (solicitudesCompletadas.length > 0) {
+          const tiempoTotal = solicitudesCompletadas.reduce((acc, s) => acc + (s.tiempo_respuesta || 0), 0);
+          tiempoPromedioRespuesta = Math.round((tiempoTotal / solicitudesCompletadas.length) * 10) / 10;
+        }
 
-    return of({
-      total,
-      completadas,
-      enProceso,
-      pendientes,
-      tiempoPromedioRespuesta
-    });
+        return {
+          total,
+          completadas,
+          enProceso,
+          pendientes,
+          tiempoPromedioRespuesta
+        };
+      }),
+      catchError((error) => {
+        console.warn('Supabase stats failed, using demo data:', error.message);
+        
+        // Fallback a estadísticas demo
+        const solicitudes = this.solicitudesDemo;
+        const total = solicitudes.length;
+        const completadas = solicitudes.filter(s => s.estado === EstadoSolicitud.COMPLETADA || s.estado === EstadoSolicitud.ENTREGADA).length;
+        const enProceso = solicitudes.filter(s => 
+          s.estado === EstadoSolicitud.EN_PROCESO || 
+          s.estado === EstadoSolicitud.EN_REVISION
+        ).length;
+        const pendientes = solicitudes.filter(s => 
+          s.estado === EstadoSolicitud.RECIBIDA || 
+          s.estado === EstadoSolicitud.PENDIENTE_DOCUMENTOS
+        ).length;
+
+        // Calcular tiempo promedio de respuesta
+        const solicitudesCompletadas = solicitudes.filter(s => s.tiempoRespuesta);
+        let tiempoPromedioRespuesta = 0;
+        if (solicitudesCompletadas.length > 0) {
+          const tiempoTotal = solicitudesCompletadas.reduce((acc, s) => acc + (s.tiempoRespuesta || 0), 0);
+          tiempoPromedioRespuesta = Math.round((tiempoTotal / solicitudesCompletadas.length) * 10) / 10;
+        }
+
+        return of({
+          total,
+          completadas,
+          enProceso,
+          pendientes,
+          tiempoPromedioRespuesta
+        });
+      })
+    );
   }
 
   // Generar número de solicitud único
@@ -308,7 +458,7 @@ export class SolicitudesService {
     return `SOL-${año}-${timestamp}`;
   }
 
-  // Mapear datos de Supabase a modelo Solicitud (mantenido para compatibilidad)
+  // Mapear datos de Supabase a modelo Solicitud
   private mapToSolicitud(data: any): Solicitud {
     return {
       id: data.id,

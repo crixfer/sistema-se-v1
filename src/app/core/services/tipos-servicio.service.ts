@@ -143,11 +143,32 @@ export class TiposServicioService {
   constructor(private supabase: SupabaseService) {}
 
   obtenerTiposServicio(): Observable<TipoServicio[]> {
+    // Usar solo datos demo para evitar errores de conectividad
     return of([...this.tiposServicioDemo]);
   }
 
   obtenerTipoServicioPorCodigo(codigo: string): Observable<TipoServicio | null> {
+    // Usar solo datos demo para evitar errores de conectividad
     const tipo = this.tiposServicioDemo.find(t => t.codigo === codigo);
     return of(tipo || null);
+  }
+
+  // Método para verificar conectividad (mantenido para compatibilidad futura)
+  verificarConectividad(): Observable<boolean> {
+    return of(false); // Siempre retorna false para usar modo offline
+  }
+
+  // Mapear datos de Supabase a modelo TipoServicio (mantenido para compatibilidad futura)
+  private mapToTipoServicio(data: any): TipoServicio {
+    return {
+      id: data.id,
+      codigo: data.codigo,
+      nombre: data.nombre,
+      descripcion: data.descripcion,
+      tiempoEstimado: data.tiempo_estimado,
+      costo: data.costo,
+      documentosRequeridos: data.documentos_requeridos || [],
+      activo: data.activo
+    };
   }
 }

@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { HeaderComponent } from '../header/header.component';
 import { NotificationContainerComponent } from '../notification-container/notification-container.component';
+import { AuthService } from '../../../core/services/auth.service';
+import { Usuario } from '../../../core/models/auth.model';
 
 @Component({
   selector: 'app-layout',
@@ -60,6 +62,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   isMobile = false;
   isMobileMenuOpen = false;
+  currentUser: Usuario | null = null;
+
+  constructor(private authService: AuthService) {}
 
   @HostListener('window:resize', ['$event'])
   onResize(event: any) {
@@ -68,6 +73,18 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.checkScreenSize();
+    
+    // Suscribirse al usuario actual para actualizar la información del header
+    this.authService.currentUser$.subscribe((user: Usuario | null) => {
+      this.currentUser = user;
+      if (user) {
+        this.userInfo = {
+          name: this.getDisplayName(user.nombreCompleto),
+          role: user.rol.toUpperCase(),
+          initials: this.getInitials(user.nombreCompleto)
+        };
+      }
+    });
   }
 
   ngOnDestroy() {
@@ -79,6 +96,26 @@ export class LayoutComponent implements OnInit, OnDestroy {
     if (!this.isMobile) {
       this.isMobileMenuOpen = false;
     }
+  }
+
+  private getDisplayName(nombreCompleto: string): string {
+    // Convertir "Carlos Portorreal" a "C. PORTORREAL"
+    const nombres = nombreCompleto.split(' ');
+    if (nombres.length >= 2) {
+      const primerNombre = nombres[0].charAt(0).toUpperCase();
+      const apellido = nombres[nombres.length - 1].toUpperCase();
+      return `${primerNombre}. ${apellido}`;
+    }
+    return nombreCompleto.toUpperCase();
+  }
+
+  private getInitials(nombreCompleto: string): string {
+    return nombreCompleto
+      .split(' ')
+      .map(name => name.charAt(0))
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
   }
 
   toggleMobileMenu() {

@@ -24,6 +24,16 @@ import { AuthService } from '../../core/services/auth.service';
         <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
           <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 text-center">Iniciar Sesión</h2>
           
+          <!-- Aviso de modo demo -->
+          <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div class="flex items-center">
+              <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+              <div class="text-sm text-blue-800">
+                <strong>Modo Demo:</strong> Sistema funcionando en modo offline con datos de demostración.
+              </div>
+            </div>
+          </div>
+          
           <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
             <div class="mb-4">
               <label class="block text-gray-700 text-sm font-medium mb-2">
@@ -99,13 +109,30 @@ import { AuthService } from '../../core/services/auth.service';
             </p>
           </div>
 
-          <!-- Información de acceso -->
+          <!-- Información de usuarios demo -->
           <div class="mt-4 sm:mt-6 pt-4 border-t border-gray-200">
-            <h3 class="text-sm font-medium text-gray-700 mb-3 text-center">Información del Sistema:</h3>
+            <h3 class="text-sm font-medium text-gray-700 mb-3 text-center">Usuarios Demo Disponibles:</h3>
             <div class="space-y-2 text-xs text-gray-600">
-              <div class="text-center">
-                <p>Este es un sistema de demostración.</p>
-                <p>Para crear usuarios reales, necesitas configurar Supabase.</p>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="text-center p-2 bg-gray-50 rounded">
+                  <div class="font-medium">admin&#64;demo.com</div>
+                  <div class="text-gray-500">Administrador</div>
+                </div>
+                <div class="text-center p-2 bg-gray-50 rounded">
+                  <div class="font-medium">supervisor&#64;demo.com</div>
+                  <div class="text-gray-500">Supervisor</div>
+                </div>
+                <div class="text-center p-2 bg-gray-50 rounded">
+                  <div class="font-medium">operador&#64;demo.com</div>
+                  <div class="text-gray-500">Operador</div>
+                </div>
+                <div class="text-center p-2 bg-gray-50 rounded">
+                  <div class="font-medium">consultor&#64;demo.com</div>
+                  <div class="text-gray-500">Consultor</div>
+                </div>
+              </div>
+              <div class="text-center mt-2">
+                <p class="text-gray-500">Contraseña: cualquier texto</p>
               </div>
             </div>
           </div>
@@ -114,6 +141,7 @@ import { AuthService } from '../../core/services/auth.service';
         <!-- Footer -->
         <div class="text-center mt-4 sm:mt-6 text-blue-100 text-xs sm:text-sm">
           <p>&copy; 2024 Sistema de Administración de Solicitudes</p>
+          <p class="mt-1">Funcionando en modo demo offline</p>
         </div>
       </div>
     </div>
@@ -143,24 +171,29 @@ export class LoginComponent {
 
       const credentials = this.loginForm.value;
 
-      this.authService.login(credentials).subscribe({
-        next: (usuario) => {
-          this.isLoading = false;
-          this.router.navigate(['/dashboard']);
-        },
-        error: (error) => {
-          this.isLoading = false;
-          console.error('Error en login:', error);
-          
-          if (error.message?.includes('Invalid login credentials')) {
-            this.errorMessage = 'Credenciales incorrectas. Verifique su correo y contraseña.';
-          } else if (error.message?.includes('Usuario inactivo')) {
-            this.errorMessage = 'Su cuenta está inactiva. Contacte al administrador.';
-          } else {
-            this.errorMessage = 'Error al iniciar sesión. Intente con el acceso demo.';
+      try {
+        this.authService.login(credentials).subscribe({
+          next: (usuario) => {
+            this.isLoading = false;
+            this.router.navigate(['/dashboard']);
+          },
+          error: (error) => {
+            this.isLoading = false;
+            console.error('Error en login:', error);
+            
+            if (error.message?.includes('Invalid login credentials')) {
+              this.errorMessage = 'Credenciales incorrectas. Intenta con uno de los usuarios demo disponibles.';
+            } else if (error.message?.includes('Usuario inactivo')) {
+              this.errorMessage = 'Su cuenta está inactiva. Contacte al administrador.';
+            } else {
+              this.errorMessage = 'Error al iniciar sesión. Intente con el acceso demo.';
+            }
           }
-        }
-      });
+        });
+      } catch (error) {
+        this.isLoading = false;
+        this.errorMessage = 'Error inesperado. Intente con el acceso demo.';
+      }
     }
   }
 

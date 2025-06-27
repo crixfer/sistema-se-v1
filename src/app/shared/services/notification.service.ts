@@ -78,6 +78,16 @@ export class NotificationService {
     });
   }
 
+  // Método especial para errores de conectividad
+  networkError(title: string = 'Error de Conectividad', message: string = 'No se pudo conectar al servidor. La aplicación funcionará en modo offline.', duration?: number): void {
+    this.show({
+      type: 'warning',
+      title: `⚠️ ${title}`,
+      message,
+      duration: duration ?? 8000 // Errores de red duran más tiempo
+    });
+  }
+
   // Cerrar una notificación específica
   remove(id: string): void {
     const currentNotifications = this.notificationsSubject.value;
