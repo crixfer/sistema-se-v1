@@ -22,21 +22,25 @@ Antes de comenzar, asegúrate de tener instalado:
 ## 🛠️ Instalación
 
 1. **Clona el repositorio:**
+
 ```bash
 git clone https://github.com/crixfer/sistema-se-v1.git
 cd sistema-se-v1
 ```
 
 2. **Instala las dependencias:**
+
 ```bash
 npm install
 ```
 
 3. **Configura las variables de entorno:**
+
    - Copia `src/environments/environment.ts.example` a `src/environments/environment.ts`
    - Actualiza las credenciales de Supabase
 
 4. **Configura la base de datos:**
+
 ```bash
 # Revisa las migraciones en supabase/migrations/
 # Ejecuta las migraciones en tu proyecto de Supabase
@@ -45,6 +49,7 @@ npm install
 ## 🚀 Scripts Disponibles
 
 ### Desarrollo
+
 ```bash
 npm run start         # Servidor de desarrollo (http://localhost:4200)
 npm run dev          # Alias para start
@@ -52,12 +57,14 @@ npm run watch        # Construcción en modo watch
 ```
 
 ### Producción
+
 ```bash
 npm run build:prod   # Construcción optimizada para producción
 npm run serve:prod   # Servidor con configuración de producción
 ```
 
 ### Testing
+
 ```bash
 npm run test         # Ejecutar pruebas unitarias
 ```
@@ -87,12 +94,14 @@ src/
 ## 🌐 Despliegue
 
 ### Netlify / Vercel
+
 ```bash
 npm run build:prod
 # Sube la carpeta dist/ al servicio de hosting
 ```
 
 ### Docker
+
 ```dockerfile
 FROM node:18-alpine as build
 WORKDIR /app
@@ -115,19 +124,21 @@ COPY --from=build /app/dist/sistema-se-v1 /usr/share/nginx/html
 ```typescript
 export const environment = {
   production: false,
-  supabaseUrl: 'TU_SUPABASE_URL',
-  supabaseKey: 'TU_SUPABASE_ANON_KEY',
+  supabaseUrl: "TU_SUPABASE_URL",
+  supabaseKey: "TU_SUPABASE_ANON_KEY",
 };
 ```
 
 ## 🎨 Personalización
 
 ### Temas y Estilos
+
 - Los estilos están en `src/styles.scss`
 - Configuración de Tailwind en `tailwind.config.js`
 - Componentes con clases utilitarias de Tailwind
 
 ### Agregar Nuevas Páginas
+
 1. Generar componente: `ng generate component pages/nueva-pagina`
 2. Agregar ruta en `app.routes.ts`
 3. Actualizar navegación en `sidebar.component.ts`
@@ -135,6 +146,7 @@ export const environment = {
 ## 🐛 Solución de Problemas
 
 ### Error de Cache
+
 ```bash
 ng cache clean
 rm -rf node_modules package-lock.json
@@ -142,12 +154,14 @@ npm install
 ```
 
 ### Problemas de Build
+
 ```bash
 npm run build:prod -- --verbose
 # Revisa los errores específicos
 ```
 
 ### Base de Datos
+
 - Verifica las credenciales de Supabase
 - Confirma que las tablas existen
 - Revisa las políticas RLS
@@ -172,6 +186,7 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 ## 📞 Soporte
 
 Para soporte técnico:
+
 - 📧 Email: soporte@sistema-se.com
 - 🐛 Issues: [GitHub Issues](https://github.com/crixfer/sistema-se-v1/issues)
 - 📖 Wiki: [Documentación completa](https://github.com/crixfer/sistema-se-v1/wiki)
